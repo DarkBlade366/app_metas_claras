@@ -199,7 +199,14 @@ function TareaForm({
         />
       ) : null}
 
-      <PickField label="Hora (opcional)" icon="clock-outline" value={hora} mode="time" onChange={setHora} />
+      <PickField
+        label="Hora (opcional)"
+        icon="clock-outline"
+        value={hora}
+        mode="time"
+        onChange={setHora}
+        onClear={() => setHora(null)}
+      />
 
       <Text variant="labelMedium" style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}>
         Prioridad

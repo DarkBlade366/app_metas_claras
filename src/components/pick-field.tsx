@@ -14,6 +14,8 @@ interface PickFieldProps {
   mode: 'date' | 'time';
   onChange: (_date: Date) => void;
   minimumDate?: Date;
+  /** Muestra un botón para quitar el valor (por ejemplo, limpiar la hora). */
+  onClear?: () => void;
 }
 
 function formatValue(value: Date, mode: 'date' | 'time'): string {
@@ -37,7 +39,7 @@ function isSet(event: DateTimePickerEvent) {
  * En Android abre el diálogo del sistema al tocarlo; en iOS/web muestra un
  * selector en un modal.
  */
-export function PickField({ label, icon, value, mode, onChange, minimumDate }: PickFieldProps) {
+export function PickField({ label, icon, value, mode, onChange, minimumDate, onClear }: PickFieldProps) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
 
@@ -63,22 +65,40 @@ export function PickField({ label, icon, value, mode, onChange, minimumDate }: P
       <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
         {label}
       </Text>
-      <Pressable
-        onPress={() => setOpen(true)}
-        style={[styles.field, { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outline }]}
-      >
-        <MaterialCommunityIcons name={icon as never} size={20} color={theme.colors.primary} />
-        <Text
-          variant="bodyLarge"
-          style={{
-            color: value ? theme.colors.onSurface : theme.colors.onSurfaceVariant,
-            flex: 1,
-          }}
+      <View style={styles.fieldRow}>
+        <Pressable
+          onPress={() => setOpen(true)}
+          style={[
+            styles.field,
+            { flex: 1, backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outline },
+          ]}
         >
-          {value ? formatValue(value, mode) : `Elegir ${mode === 'date' ? 'fecha' : 'hora'}`}
-        </Text>
-        <MaterialCommunityIcons name="chevron-down" size={20} color={theme.colors.onSurfaceVariant} />
-      </Pressable>
+          <MaterialCommunityIcons name={icon as never} size={20} color={theme.colors.primary} />
+          <Text
+            variant="bodyLarge"
+            style={{
+              color: value ? theme.colors.onSurface : theme.colors.onSurfaceVariant,
+              flex: 1,
+            }}
+          >
+            {value ? formatValue(value, mode) : `Elegir ${mode === 'date' ? 'fecha' : 'hora'}`}
+          </Text>
+          <MaterialCommunityIcons name="chevron-down" size={20} color={theme.colors.onSurfaceVariant} />
+        </Pressable>
+        {onClear && value ? (
+          <Pressable
+            onPress={onClear}
+            hitSlop={6}
+            accessibilityLabel={`Quitar ${mode === 'date' ? 'fecha' : 'hora'}`}
+            style={[
+              styles.clearBtn,
+              { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outline },
+            ]}
+          >
+            <MaterialCommunityIcons name="close" size={18} color={theme.colors.onSurfaceVariant} />
+          </Pressable>
+        ) : null}
+      </View>
 
       {Platform.OS === 'android' || Platform.OS === 'web' ? (
         picker
@@ -115,6 +135,12 @@ export function PickField({ label, icon, value, mode, onChange, minimumDate }: P
 }
 
 const styles = StyleSheet.create({
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -123,7 +149,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    marginTop: 6,
+  },
+  clearBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
   },
   modal: {
     margin: 24,
