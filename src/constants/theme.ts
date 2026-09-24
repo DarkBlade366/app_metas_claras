@@ -1,65 +1,63 @@
+import { MD3DarkTheme } from 'react-native-paper';
+import type { MD3Theme } from 'react-native-paper';
+
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Tema oscuro de Metas Claras. Paleta violeta/índigo pensada para fondo
+ * oscuro (#141318): colores claros con contraste 4.5:1 o más sobre él.
  */
-
-import '@/global.css';
-
-import { Platform } from 'react-native';
-
-export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+const darkTheme: MD3Theme = {
+  ...MD3DarkTheme,
+  roundness: 6,
+  colors: {
+    ...MD3DarkTheme.colors,
+    primary: '#B39DFF',
+    onPrimary: '#2A1F4F',
+    primaryContainer: '#4A3B85',
+    onPrimaryContainer: '#E8DEFF',
+    secondary: '#98C4FF',
+    onSecondary: '#001D38',
+    secondaryContainer: '#153255',
+    onSecondaryContainer: '#D3E4FF',
+    tertiary: '#F1B0FF',
+    onTertiary: '#4A0064',
+    tertiaryContainer: '#670086',
+    onTertiaryContainer: '#FFD6FF',
+    error: '#FFB4AB',
+    onError: '#690005',
+    errorContainer: '#93000A',
+    onErrorContainer: '#FFDAD6',
+    background: '#141318',
+    onBackground: '#E6E1E9',
+    surface: '#141318',
+    onSurface: '#E6E1E9',
+    surfaceVariant: '#48464E',
+    onSurfaceVariant: '#C9C5CF',
+    outline: '#928F99',
+    outlineVariant: '#48464E',
+    shadow: '#000000',
+    scrim: '#000000',
+    inverseSurface: '#E6E1E9',
+    inverseOnSurface: '#2F2D34',
+    inversePrimary: '#6A5BAF',
+    surfaceDisabled: 'rgba(230,225,233,0.12)',
+    onSurfaceDisabled: 'rgba(230,225,233,0.38)',
+    backdrop: 'rgba(28,26,33,0.4)',
   },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+};
+
+export const SEMANTIC = {
+  success: '#34D399',
+  warning: '#F5A623',
+  danger: '#F87171',
+  neutral: '#9AA5A1',
+  info: '#64B5F6',
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
-
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+/** Color de marca de cada tipo de tarea (usado en iconos y marcas del calendario). */
+export const TYPE_COLORS = {
+  diaria: '#B39DFF',
+  semanal: '#64B5F6',
+  general: '#F5A623',
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const AppThemes = { dark: darkTheme } as const;
