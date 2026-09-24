@@ -1,56 +1,63 @@
-# Welcome to your Expo app 👋
+# Metas Claras
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicación móvil (Expo / React Native) para organizar metas diarias, semanales y
+generales con subtareas, calendario, racha y recordatorios locales.
 
-## Get started
+## Funcionalidades
 
-1. Install dependencies
+- **Hoy**: vista del día con tus metas pendientes, completadas y atrasadas,
+  barra de avance y navegación entre días.
+- **Metas**: lista de todas tus metas filtrable por tipo (diarias, semanales,
+  generales), con estado de hoy.
+- **Calendario**: mes con marcas por tipo de meta; cada día muestra sus metas.
+- **Ajustes**: estadísticas (metas activas, racha, avance de hoy), recordatorio
+  diario opcional, alertas de prueba y borrado de datos.
+- **Metas generales**: fecha límite y subtareas.
+- **Recordatorios**: alertas locales en la hora que definas por meta y un
+  repaso diario opcional.
 
-   ```bash
-   npm install
-   ```
+## Tipos de meta
 
-2. Start the app
+- **Diaria** — se repite todos los días.
+- **Semanal** — se repite cada semana en los días que marques.
+- **General** — meta de una sola vez con fecha límite y subtareas.
 
-   ```bash
-   npx expo start
-   ```
+## Requisitos
 
-In the output, you'll find options to open the app in a
+- Node.js y npm
+- [Expo](https://docs.expo.dev) (SDK 57)
+- Para probar notificaciones locales en Android se recomienda un
+  [development build](https://docs.expo.dev/develop/development-builds/introduction/).
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Puesta en marcha
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+En la salida encontrarás opciones para abrir la app en web, un emulador o
+Expo Go.
 
-### Other setup steps
+## Comandos útiles
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npx expo start          # servidor de desarrollo
+npx expo lint           # lint
+npx tsc --noEmit        # verificación de tipos
+npx expo-doctor         # diagnóstico de dependencias y configuración
+npx expo install --fix  # corregir versiones de paquetes
+```
 
-## Learn more
+## Estructura
 
-To learn more about developing your project with Expo, look at the following resources:
+```
+src/
+  app/          rutas de Expo Router (cada archivo es una pantalla)
+  components/   componentes reutilizables
+  constants/    tema y colores
+  lib/          base de datos (expo-sqlite), proveedor y notificaciones
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Los datos se guardan localmente con `expo-sqlite` (tareas, subtareas y logros);
+no se necesita backend.
