@@ -13,7 +13,6 @@ import { DIAS_SEMANA_LABELS, TODOS_LOS_DIAS } from '@/lib/schema';
 import { dataChanged, useDB, useDbQuery } from '@/lib/db-provider';
 import { pedirPermisoNotificaciones } from '@/lib/notifications';
 
-const COLORES = ['#B39DFF', '#64B5F6', '#F5A623', '#34D399', '#F87171', '#F1B0FF'] as const;
 const PRIORIDADES: { value: Priority; label: string }[] = [
   { value: 'alta', label: 'Alta' },
   { value: 'media', label: 'Media' },
@@ -35,9 +34,11 @@ function horaInicial(existente: Tarea | null): Date | null {
   return new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate(), hh, mm);
 }
 
-function fechaInicial(existente: Tarea | null): Date {
-  if (existente?.tipo === 'general' && existente.fecha) return keyToDate(existente.fecha);
-  return new Date();
+function fechaInicial(existente: Tarea | null): Date | null {
+  if (existente?.fecha && (existente.tipo === 'general' || existente.tipo === 'puntual')) {
+    return keyToDate(existente.fecha);
+  }
+  return null;
 }
 
 export default function TareaFormScreen() {
@@ -81,7 +82,6 @@ function TareaForm({
   const [fecha, setFecha] = useState<Date | null>(() => fechaInicial(existente));
   const [hora, setHora] = useState<Date | null>(() => horaInicial(existente));
   const [prioridad, setPrioridad] = useState<Priority>(existente?.prioridad ?? 'media');
-  const [color, setColor] = useState<string>(existente?.color || COLORES[0]);
   const [error, setError] = useState<string | null>(null);
 
   const toggleDia = (d: number) => {
@@ -97,6 +97,18 @@ function TareaForm({
       setError('Selecciona al menos un día de la semana.');
       return;
     }
+    if (tipo === 'puntual' && !fecha) {
+      setError('Elige el día en que se hace esta meta.');
+      return;
+    }
+    if (tipo === 'puntual' && fecha) {
+      const diaElegido = dateToKey(fecha);
+      const esElMismoDeAntes = id != null && existente?.fecha === diaElegido;
+      if (!esElMismoDeAntes && diaElegido < todayKey()) {
+        setError('El día no puede ser anterior a hoy.');
+        return;
+      }
+    }
 
     setError(null);
     const horaTexto = hora ? `${pad2(hora.getHours())}:${pad2(hora.getMinutes())}` : null;
@@ -108,10 +120,9 @@ function TareaForm({
         descripcion: descripcion.trim() || null,
         tipo,
         diasSemana: tipo === 'semanal' ? diasSemana : TODOS_LOS_DIAS,
-        fecha: tipo === 'general' && fecha ? dateToKey(fecha) : null,
+        fecha: (tipo === 'general' || tipo === 'puntual') && fecha ? dateToKey(fecha) : null,
         hora: horaTexto,
         prioridad,
-        color,
       },
       id ?? undefined
     );
@@ -148,6 +159,7 @@ function TareaForm({
         buttons={[
           { value: 'diaria', label: 'Diaria', icon: 'repeat-variant' },
           { value: 'semanal', label: 'Semanal', icon: 'calendar-week' },
+          { value: 'puntual', label: 'Día', icon: 'calendar-star' },
           { value: 'general', label: 'General', icon: 'target' },
         ]}
         style={styles.segmented}
@@ -157,7 +169,9 @@ function TareaForm({
         <Text variant="labelSmall" style={[styles.help, { color: theme.colors.onSurfaceVariant }]}>
           {tipo === 'semanal'
             ? 'Se repite cada semana en los días que marques.'
-            : 'Meta de una sola vez con fecha límite y subtareas.'}
+            : tipo === 'puntual'
+              ? 'Se hace un solo día que tú elijas.'
+              : 'Meta de una sola vez, con o sin fecha límite, y subtareas.'}
         </Text>
       ) : null}
 
@@ -189,13 +203,20 @@ function TareaForm({
         </View>
       ) : null}
 
-      {tipo === 'general' ? (
+      {tipo === 'general' || tipo === 'puntual' ? (
         <PickField
-          label="Fecha límite"
+          label={tipo === 'puntual' ? 'Día' : 'Fecha límite (opcional)'}
           icon="calendar"
           value={fecha}
           mode="date"
           onChange={setFecha}
+          onClear={
+            tipo === 'general'
+              ? () => {
+                  setFecha(null);
+                }
+              : undefined
+          }
         />
       ) : null}
 
@@ -222,25 +243,6 @@ function TareaForm({
           >
             {p.label}
           </Button>
-        ))}
-      </View>
-
-      <Text variant="labelMedium" style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}>
-        Color
-      </Text>
-      <View style={styles.colorsRow}>
-        {COLORES.map((c) => (
-          <Pressable
-            key={c}
-            onPress={() => setColor(c)}
-            style={[
-              styles.swatch,
-              { backgroundColor: c },
-              color === c && styles.swatchActive,
-            ]}
-          >
-            {color === c ? <MaterialCommunityIcons name="check" size={18} color="#141318" /> : null}
-          </Pressable>
         ))}
       </View>
 
@@ -271,7 +273,8 @@ function TareaForm({
 
       {id ? (
         <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: 8 }}>
-          Las tareas diarias y semanales marcan cada día; las generales se completan una vez.
+          Las diarias y semanales se repiten; las de día específico se hacen una vez; las generales
+          se completan una vez y pueden tener subtareas.
         </Text>
       ) : null}
     </Screen>
@@ -294,14 +297,5 @@ const styles = StyleSheet.create({
   },
   chipsRow: { flexDirection: 'row', gap: 8 },
   chip: { flex: 1 },
-  colorsRow: { flexDirection: 'row', gap: 12 },
-  swatch: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  swatchActive: { borderWidth: 2, borderColor: '#ffffff' },
   saveBtn: { marginTop: 20, borderRadius: 10 },
 });

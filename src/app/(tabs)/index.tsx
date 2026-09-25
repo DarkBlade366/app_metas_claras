@@ -19,8 +19,8 @@ export default function HoyScreen() {
   const isToday = selectedDay === todayKey();
   const pendientes = dia.data?.pendientes ?? [];
   const hechas = dia.data?.hechas ?? [];
-  const atrasadas = dia.data?.atrasadas ?? [];
-  const total = pendientes.length + hechas.length;
+  const noHechas = dia.data?.noHechas ?? [];
+  const total = pendientes.length + hechas.length + noHechas.length;
   const completadas = hechas.length;
   const avance = total > 0 ? completadas / total : 0;
 
@@ -112,13 +112,13 @@ export default function HoyScreen() {
           </View>
         </View>
 
-        {atrasadas.length > 0 ? (
+        {noHechas.length > 0 ? (
           <View style={styles.section}>
             <Text variant="labelLarge" style={{ color: theme.colors.error, fontWeight: '700' }}>
-              Atrasadas
+              No hechas
             </Text>
             <View style={{ gap: 8 }}>
-              {atrasadas.map((item) => (
+              {noHechas.map((item) => (
                 <TaskRow
                   key={item.tarea.id}
                   tarea={item.tarea}
@@ -176,7 +176,7 @@ export default function HoyScreen() {
           </View>
         ) : null}
 
-        {total === 0 && atrasadas.length === 0 ? (
+        {total === 0 && noHechas.length === 0 ? (
           <View style={styles.emptyHint}>
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
               No tienes metas para este día. Crea una nueva para empezar.

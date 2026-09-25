@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 export const DATABASE_NAME = 'metasclaras.db';
 export const DB_VERSION = 2;
 
-export type TaskType = 'diaria' | 'semanal' | 'general';
+export type TaskType = 'diaria' | 'semanal' | 'puntual' | 'general';
 export type Priority = 'alta' | 'media' | 'baja';
 
 /** Tarea (meta). */
@@ -11,11 +11,11 @@ export interface Tarea {
   id: number;
   titulo: string;
   descripcion: string | null;
-  /** diaria | semanal | general */
+  /** diaria | semanal | puntual | general */
   tipo: TaskType;
   /** Días de la semana (0=domingo … 6=sábado). Solo diaria/semanal. */
   diasSemana: number[];
-  /** Fecha límite YYYY-MM-DD. Solo general. */
+  /** Fecha YYYY-MM-DD. Obligatoria en puntual, opcional en general. */
   fecha: string | null;
   /** Hora HH:mm (opcional en cualquier tipo). */
   hora: string | null;

@@ -1,4 +1,5 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, Card, Divider, Switch, Text, useTheme } from 'react-native-paper';
@@ -117,6 +118,7 @@ export default function AjustesScreen() {
             sublabel={`${s?.diarias ?? 0} diarias`}
             icon="calendar-check"
             tone="primary"
+            onPress={() => router.push('/estadistica/metas')}
           />
           <StatCard
             label="Racha"
@@ -124,6 +126,7 @@ export default function AjustesScreen() {
             sublabel={s && s.racha > 0 ? 'días seguidos' : 'días'}
             icon="fire"
             tone={s && s.racha > 0 ? 'primary' : 'neutral'}
+            onPress={() => router.push('/estadistica/racha')}
           />
         </View>
         <View style={styles.statsRow}>
@@ -133,6 +136,7 @@ export default function AjustesScreen() {
             sublabel="avance del día"
             icon="check-circle"
             tone={(s?.hoyTotal ?? 0) > 0 && (s?.hoyHechas ?? 0) === (s?.hoyTotal ?? 0) ? 'primary' : 'warning'}
+            onPress={() => router.push('/estadistica/hoy')}
           />
           <StatCard
             label="Generales cumplidas"
@@ -140,6 +144,7 @@ export default function AjustesScreen() {
             sublabel={`${s?.generales ?? 0} en total`}
             icon="target"
             tone="neutral"
+            onPress={() => router.push('/estadistica/generales')}
           />
         </View>
 
@@ -152,9 +157,11 @@ export default function AjustesScreen() {
             )}
           />
           <Card.Content>
-            <InfoLine text="Diarias y semanales se repiten: se marcan cada día en el calendario." />
+            <InfoLine text="Diarias y semanales se repiten: las diarias cada día y las semanales los días que escojas." />
             <Divider style={styles.divider} />
-            <InfoLine text="Las generales tienen fecha límite y pueden dividirse en subtareas." />
+            <InfoLine text="De día específico se hacen una vez (solo ese día en el calendario); si no se hacen salen con X roja." />
+            <Divider style={styles.divider} />
+            <InfoLine text="Las generales solo aparecen el día en que las completas; pueden llevar subtareas y fecha límite opcional." />
             <Divider style={styles.divider} />
             <InfoLine text="La racha suma cada día en que completas al menos una meta." />
           </Card.Content>

@@ -6,6 +6,7 @@ import { Button, Card, Divider, IconButton, Text, TextInput, useTheme } from 're
 
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Screen } from '@/components/screen';
+import { priorityColor } from '@/constants/theme';
 import {
   addSubtarea,
   deleteSubtarea,
@@ -20,6 +21,13 @@ import {
   weekdayNames,
 } from '@/lib/db';
 import { dataChanged, useDB, useDbQuery } from '@/lib/db-provider';
+
+const TIPO_INFO: Record<string, { icon: string; label: string }> = {
+  diaria: { icon: 'repeat-variant', label: 'Diaria' },
+  semanal: { icon: 'calendar-week', label: 'Semanal' },
+  puntual: { icon: 'calendar-star', label: 'Día específico' },
+  general: { icon: 'target', label: 'General' },
+};
 
 const PRIORIDAD_LABEL: Record<string, string> = {
   alta: 'Prioridad alta',
@@ -61,9 +69,13 @@ export default function TareaDetailScreen() {
       ? 'Todos los días'
       : tarea.tipo === 'semanal'
         ? `Cada ${weekdayNames(tarea.diasSemana)}`
-        : tarea.fecha
-          ? `Con vencimiento el ${dayLabel(tarea.fecha)}`
-          : 'Sin fecha';
+        : tarea.tipo === 'puntual'
+          ? tarea.fecha
+            ? `El ${dayLabel(tarea.fecha)}`
+            : 'Sin fecha'
+          : tarea.fecha
+            ? `Con vencimiento el ${dayLabel(tarea.fecha)}`
+            : 'Sin fecha';
 
   const marcarHoy = async () => {
     await toggleTareaEnFecha(db, tarea.id, hoy);
@@ -85,12 +97,15 @@ export default function TareaDetailScreen() {
     router.back();
   };
 
-  const yaHechaHoy = tarea.tipo === 'general' ? tarea.completada : logroHoyQ.data === true;
+  const yaHechaHoy =
+    tarea.tipo === 'general' || tarea.tipo === 'puntual'
+      ? tarea.completada
+      : logroHoyQ.data === true;
 
   return (
     <Screen>
       <Card mode="outlined" style={[styles.card, { borderColor: theme.colors.outlineVariant }]}>
-        <View style={[styles.strip, { backgroundColor: tarea.color }]} />
+        <View style={[styles.strip, { backgroundColor: priorityColor(tarea.prioridad) }]} />
         <Card.Content>
           <View style={styles.titleRow}>
             <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, fontWeight: '800', flex: 1 }}>
@@ -104,9 +119,13 @@ export default function TareaDetailScreen() {
           ) : null}
 
           <View style={styles.badges}>
-            <Badge icon="repeat-variant" text={tarea.tipo === 'general' ? 'General' : 'Recurrente'} color={theme.colors.primary} />
             <Badge
-              icon={tarea.tipo === 'general' ? 'target' : 'calendar-week'}
+              icon={TIPO_INFO[tarea.tipo].icon}
+              text={TIPO_INFO[tarea.tipo].label}
+              color={theme.colors.primary}
+            />
+            <Badge
+              icon={TIPO_INFO[tarea.tipo].icon}
               text={recurrencia}
               color={theme.colors.onSurfaceVariant}
             />
@@ -132,7 +151,7 @@ export default function TareaDetailScreen() {
             />
           </View>
 
-          {subtareas.length > 0 ? (
+{tarea.tipo === 'general' && subtareas.length > 0 ? (
             <>
               <Divider style={styles.divider} />
               <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
@@ -158,72 +177,74 @@ export default function TareaDetailScreen() {
         {yaHechaHoy ? 'Desmarcar de hoy' : 'Marcar como hecha hoy'}
       </Button>
 
-      <Card mode="outlined" style={[styles.card, { borderColor: theme.colors.outlineVariant }]}>
-        <Card.Title
-          title="Subtareas"
-          titleVariant="titleMedium"
-          subtitle="Divide tu meta en pasos pequeños"
-          left={() => (
-            <MaterialCommunityIcons name="format-list-checks" size={24} color={theme.colors.primary} />
-          )}
-        />
-        {subtareas.length > 0 ? (
-          <View>
-            {subtareas.map((s, index) => (
-              <View key={s.id}>
-                {index > 0 ? <Divider /> : null}
-                <View style={styles.subRow}>
-                  <Pressable onPress={async () => { await toggleSubtarea(db, s.id); dataChanged(); }} hitSlop={8}>
-                    <MaterialCommunityIcons
-                      name={s.hecha ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
-                      size={24}
-                      color={s.hecha ? theme.colors.primary : theme.colors.onSurfaceVariant}
+      {tarea.tipo === 'general' ? (
+        <Card mode="outlined" style={[styles.card, { borderColor: theme.colors.outlineVariant }]}>
+          <Card.Title
+            title="Subtareas"
+            titleVariant="titleMedium"
+            subtitle="Divide tu meta en pasos pequeños"
+            left={() => (
+              <MaterialCommunityIcons name="format-list-checks" size={24} color={theme.colors.primary} />
+            )}
+          />
+          {subtareas.length > 0 ? (
+            <View>
+              {subtareas.map((s, index) => (
+                <View key={s.id}>
+                  {index > 0 ? <Divider /> : null}
+                  <View style={styles.subRow}>
+                    <Pressable onPress={async () => { await toggleSubtarea(db, s.id); dataChanged(); }} hitSlop={8}>
+                      <MaterialCommunityIcons
+                        name={s.hecha ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+                        size={24}
+                        color={s.hecha ? theme.colors.primary : theme.colors.onSurfaceVariant}
+                      />
+                    </Pressable>
+                    <Text
+                      variant="bodyMedium"
+                      style={[
+                        styles.subTitle,
+                        { color: s.hecha ? theme.colors.onSurfaceVariant : theme.colors.onSurface },
+                        s.hecha && styles.tachado,
+                      ]}
+                    >
+                      {s.titulo}
+                    </Text>
+                    <IconButton
+                      icon="delete-outline"
+                      iconColor={theme.colors.onSurfaceVariant}
+                      size={18}
+                      onPress={async () => { await deleteSubtarea(db, s.id); dataChanged(); }}
                     />
-                  </Pressable>
-                  <Text
-                    variant="bodyMedium"
-                    style={[
-                      styles.subTitle,
-                      { color: s.hecha ? theme.colors.onSurfaceVariant : theme.colors.onSurface },
-                      s.hecha && styles.tachado,
-                    ]}
-                  >
-                    {s.titulo}
-                  </Text>
-                  <IconButton
-                    icon="delete-outline"
-                    iconColor={theme.colors.onSurfaceVariant}
-                    size={18}
-                    onPress={async () => { await deleteSubtarea(db, s.id); dataChanged(); }}
-                  />
+                  </View>
                 </View>
-              </View>
-            ))}
+              ))}
+            </View>
+          ) : (
+            <Card.Content>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', paddingVertical: 8 }}>
+                Sin subtareas todavía. Agrega la primera abajo.
+              </Text>
+            </Card.Content>
+          )}
+          <View style={styles.addSub}>
+            <TextInput
+              mode="outlined"
+              value={nuevaSubtarea}
+              onChangeText={setNuevaSubtarea}
+              placeholder="Nueva subtarea"
+              onSubmitEditing={agregarSubtarea}
+              style={{ flex: 1 }}
+            />
+            <IconButton
+              icon="plus-circle"
+              iconColor={theme.colors.primary}
+              size={30}
+              onPress={agregarSubtarea}
+            />
           </View>
-        ) : (
-          <Card.Content>
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', paddingVertical: 8 }}>
-              Sin subtareas todavía. Agrega la primera abajo.
-            </Text>
-          </Card.Content>
-        )}
-        <View style={styles.addSub}>
-          <TextInput
-            mode="outlined"
-            value={nuevaSubtarea}
-            onChangeText={setNuevaSubtarea}
-            placeholder="Nueva subtarea"
-            onSubmitEditing={agregarSubtarea}
-            style={{ flex: 1 }}
-          />
-          <IconButton
-            icon="plus-circle"
-            iconColor={theme.colors.primary}
-            size={30}
-            onPress={agregarSubtarea}
-          />
-        </View>
-      </Card>
+        </Card>
+      ) : null}
 
       <View style={styles.actions}>
         <Button

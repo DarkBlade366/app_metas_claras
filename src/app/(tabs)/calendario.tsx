@@ -59,7 +59,7 @@ export default function CalendarioScreen() {
     dataChanged();
   };
 
-  const atrasadas = dia.data?.atrasadas ?? [];
+  const noHechas = dia.data?.noHechas ?? [];
   const pendientes = dia.data?.pendientes ?? [];
   const hechas = dia.data?.hechas ?? [];
 
@@ -97,6 +97,7 @@ export default function CalendarioScreen() {
         <View style={styles.legend}>
           <LegendDot color={TYPE_COLORS.diaria} label="Diarias" />
           <LegendDot color={TYPE_COLORS.semanal} label="Semanales" />
+          <LegendDot color={TYPE_COLORS.puntual} label="Día específico" />
           <LegendDot color={TYPE_COLORS.general} label="Generales" />
         </View>
 
@@ -115,7 +116,7 @@ export default function CalendarioScreen() {
           ) : null}
         </View>
 
-        {atrasadas.length === 0 && pendientes.length === 0 && hechas.length === 0 ? (
+        {noHechas.length === 0 && pendientes.length === 0 && hechas.length === 0 ? (
           <View style={styles.emptyHint}>
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
               Sin metas para este día.
@@ -123,9 +124,12 @@ export default function CalendarioScreen() {
           </View>
         ) : null}
 
-        {atrasadas.length > 0 ? (
+        {noHechas.length > 0 ? (
           <View style={{ gap: 8, marginBottom: 12 }}>
-            {atrasadas.map((it) => (
+            <Text variant="labelLarge" style={{ color: theme.colors.error, fontWeight: '700' }}>
+              No hechas
+            </Text>
+            {noHechas.map((it) => (
               <TaskRow
                 key={it.tarea.id}
                 tarea={it.tarea}

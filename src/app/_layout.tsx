@@ -55,6 +55,7 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="tarea/nueva" options={{ title: 'Nueva meta' }} />
               <Stack.Screen name="tarea/[id]" options={{ title: 'Meta' }} />
+              <Stack.Screen name="estadistica/[clave]" options={{ title: 'Estadística' }} />
             </Stack>
           </PaperProvider>
         </DBProvider>

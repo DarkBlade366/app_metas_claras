@@ -1,6 +1,8 @@
 import { MD3DarkTheme } from 'react-native-paper';
 import type { MD3Theme } from 'react-native-paper';
 
+import type { Priority } from '@/lib/schema';
+
 /**
  * Tema oscuro de Metas Claras. Paleta violeta/índigo pensada para fondo
  * oscuro (#141318): colores claros con contraste 4.5:1 o más sobre él.
@@ -57,7 +59,19 @@ export const SEMANTIC = {
 export const TYPE_COLORS = {
   diaria: '#B39DFF',
   semanal: '#64B5F6',
+  puntual: '#F1B0FF',
   general: '#F5A623',
 } as const;
+
+/** Color visual de una tarea según su prioridad. */
+export const PRIORITY_COLORS: Record<Priority, string> = {
+  alta: SEMANTIC.danger,
+  media: SEMANTIC.warning,
+  baja: SEMANTIC.info,
+};
+
+export function priorityColor(p: Priority): string {
+  return PRIORITY_COLORS[p];
+}
 
 export const AppThemes = { dark: darkTheme } as const;

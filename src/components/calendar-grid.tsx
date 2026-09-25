@@ -67,6 +67,7 @@ export function CalendarGrid({
           <View style={styles.dots}>
             {marca?.diaria ? <View style={[styles.dot, { backgroundColor: TYPE_COLORS.diaria }]} /> : null}
             {marca?.semanal ? <View style={[styles.dot, { backgroundColor: TYPE_COLORS.semanal }]} /> : null}
+            {marca?.puntual ? <View style={[styles.dot, { backgroundColor: TYPE_COLORS.puntual }]} /> : null}
             {marca?.general ? <View style={[styles.dot, { backgroundColor: TYPE_COLORS.general }]} /> : null}
           </View>
         </Pressable>

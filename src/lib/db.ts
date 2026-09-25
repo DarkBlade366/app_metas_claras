@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { Logro, Priority, Subtarea, Tarea, TaskType } from './schema';
-import { DIAS_SEMANA_NOMBRES } from './schema';
+import { DIAS_SEMANA_NOMBRES, TODOS_LOS_DIAS } from './schema';
 
 export type { Priority, Subtarea, Tarea, TaskType };
 
@@ -13,7 +13,6 @@ export interface TareaWrite {
   fecha: string | null;
   hora: string | null;
   prioridad: Priority;
-  color: string;
 }
 
 /** Tarea "del día" con su estado de ese día y el avance de sus subtareas. */
@@ -29,12 +28,13 @@ export interface DiaResult {
   total: number;
   hechas: number;
   pendientes: TareaDelDia[];
-  atrasadas: TareaDelDia[];
+  noHechas: TareaDelDia[];
 }
 
 export interface MarcaDia {
   diaria: boolean;
   semanal: boolean;
+  puntual: boolean;
   general: boolean;
 }
 
@@ -65,14 +65,14 @@ function mapTarea(row: Record<string, unknown>): Tarea {
     titulo: row.titulo as string,
     descripcion: (row.descripcion as string | null) ?? null,
     tipo: row.tipo as TaskType,
-    diasSemana: parseDias(row.dias_semana as string | null),
+    diasSemana: parseDias(row.diasSemana as string | null),
     fecha: (row.fecha as string | null) ?? null,
     hora: (row.hora as string | null) ?? null,
     prioridad: (row.prioridad as Priority) ?? 'media',
     color: (row.color as string) ?? '#B39DFF',
     completada: (row.completada as number) === 1,
-    completadaEn: (row.completada_en as string | null) ?? null,
-    creadaEn: row.creada_en as string,
+    completadaEn: (row.completadaEn as string | null) ?? null,
+    creadaEn: (row.creadaEn as string) ?? '',
     posicion: row.posicion as number,
   };
 }
@@ -161,7 +161,7 @@ export async function saveTarea(
   if (id != null && id > 0) {
     await db.runAsync(
       `UPDATE tareas SET titulo = ?, descripcion = ?, tipo = ?, dias_semana = ?, fecha = ?,
-        hora = ?, prioridad = ?, color = ?
+        hora = ?, prioridad = ?
        WHERE id = ?`,
       [
         input.titulo.trim(),
@@ -171,7 +171,6 @@ export async function saveTarea(
         input.fecha,
         input.hora,
         input.prioridad,
-        input.color,
         id,
       ]
     );
@@ -186,8 +185,8 @@ export async function saveTarea(
     return id;
   }
   const result = await db.runAsync(
-    `INSERT INTO tareas (titulo, descripcion, tipo, dias_semana, fecha, hora, prioridad, color, creada_en)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tareas (titulo, descripcion, tipo, dias_semana, fecha, hora, prioridad, creada_en)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.titulo.trim(),
       input.descripcion?.trim() || null,
@@ -196,7 +195,6 @@ export async function saveTarea(
       input.fecha,
       input.hora,
       input.prioridad,
-      input.color,
       creadaEn,
     ]
   );
@@ -252,12 +250,37 @@ export async function getSubtaskProgress(
 
 // ------------------------------------------------------------- Lógica del día
 
+/** Tareas de una sola vez: las generales y las de día específico. */
+export function esDeUnaSolaVez(t: { tipo: TaskType }): boolean {
+  return t.tipo === 'general' || t.tipo === 'puntual';
+}
+
+/** Días en los que se repite una tarea recurrente (las diarias, todos). */
+function diasRecurrencia(t: Tarea): number[] {
+  if (t.tipo === 'diaria') return TODOS_LOS_DIAS;
+  return t.diasSemana.length > 0 ? t.diasSemana : TODOS_LOS_DIAS;
+}
+
 /** Tareas (de una lista) que corresponden a una fecha concreta. */
 export function tareasParaFecha(tareas: Tarea[], fechaKey: string): Tarea[] {
   const weekday = weekdayOfKey(fechaKey);
   return tareas.filter((t) => {
-    if (t.tipo === 'general') return t.fecha === fechaKey;
-    return t.diasSemana.includes(weekday);
+    if (t.tipo === 'general') {
+      // Las generales solo "viven" el día en que se completaron: ese día
+      // salen como hechas, ningún otro (ni pendientes).
+      return (
+        t.completada &&
+        t.completadaEn != null &&
+        localDayKey(t.completadaEn) === fechaKey
+      );
+    }
+    if (t.tipo === 'puntual') {
+      // Día específico: solo existe en su fecha (hecha o no).
+      return t.fecha === fechaKey;
+    }
+    // Diarias y semanales solo cuentan a partir del día en que se crearon.
+    if (localDayKey(t.creadaEn) > fechaKey) return false;
+    return diasRecurrencia(t).includes(weekday);
   });
 }
 
@@ -286,7 +309,7 @@ function buildTareasDelDia(
   });
 }
 
-const TIPO_ORDEN = { diaria: 0, semanal: 1, general: 2 } as const;
+const TIPO_ORDEN = { diaria: 0, semanal: 1, puntual: 2, general: 3 } as const;
 
 /** Orden natural para la lista: tipo, luego las pendientes no hechas, hora, título. */
 function sortTareasDelDia(list: TareaDelDia[]) {
@@ -302,10 +325,10 @@ function sortTareasDelDia(list: TareaDelDia[]) {
 export interface DiaBruto {
   pendientes: TareaDelDia[];
   hechas: TareaDelDia[];
-  atrasadas: TareaDelDia[];
+  noHechas: TareaDelDia[];
 }
 
-/** Lista completa de un día: pendientes, hechas y atrasadas (generales vencidas). */
+/** Lista completa de un día: pendientes, hechas y no hechas (las que se pasaron). */
 export async function getDia(db: SQLiteDatabase, fechaKey: string): Promise<DiaBruto> {
   const tareas = await getTareas(db);
   const due = tareasParaFecha(tareas, fechaKey);
@@ -320,24 +343,27 @@ export async function getDia(db: SQLiteDatabase, fechaKey: string): Promise<DiaB
   const items = buildTareasDelDia(
     due,
     densidad,
-    (t) => (t.tipo === 'general' ? t.completada : logradoHoy.has(t.id))
+    (t) => (esDeUnaSolaVez(t) ? t.completada : logradoHoy.has(t.id))
   );
 
-  const atrasadas = buildTareasDelDia(
-    tareas.filter((t) => t.tipo === 'general' && !t.completada && t.fecha != null && t.fecha < fechaKey),
-    densidad,
-    () => false
-  );
-
-  const pendientes = items.filter((i) => !i.hecha);
+  // Se pasó la fecha y no la hiciste → "No hechas" (rojo con X). Si el día aún
+  // no termina (hoy o futuro) y no está hecha, sigue en "Por hacer".
+  const pasada = fechaKey < todayKey();
   const hechas = items.filter((i) => i.hecha);
+  const noHechas: TareaDelDia[] = [];
+  const pendientes: TareaDelDia[] = [];
+  for (const i of items) {
+    if (i.hecha) continue;
+    (pasada ? noHechas : pendientes).push(i);
+  }
+
   sortTareasDelDia(pendientes);
-  sortTareasDelDia(atrasadas);
+  sortTareasDelDia(noHechas);
   // Las hechas van al final, en orden inverso (las más recientes primero no se
   // pueden saber fácilmente; se dejan ordenadas por tipo/título).
   sortTareasDelDia(hechas);
 
-  return { pendientes, hechas, atrasadas };
+  return { pendientes, hechas, noHechas };
 }
 
 /** ¿Tiene la tarea un logro (hecha) en la fecha indicada? */
@@ -358,7 +384,7 @@ export async function toggleTareaEnFecha(db: SQLiteDatabase, tareaId: number, fe
   const tarea = await getTarea(db, tareaId);
   if (!tarea) return;
 
-  if (tarea.tipo === 'general') {
+  if (esDeUnaSolaVez(tarea)) {
     if (tarea.completada) {
       await db.runAsync(
         'UPDATE tareas SET completada = 0, completada_en = NULL WHERE id = ?',
@@ -415,7 +441,7 @@ export async function getTareasConEstado(db: SQLiteDatabase): Promise<TareaDelDi
     const p = densidad.get(tarea.id) ?? { total: 0, hechas: 0 };
     return {
       tarea,
-      hecha: tarea.tipo === 'general' ? tarea.completada : logradoHoy.has(tarea.id),
+      hecha: esDeUnaSolaVez(tarea) ? tarea.completada : logradoHoy.has(tarea.id),
       subtotal: p.total,
       subhechas: p.hechas,
     };
@@ -437,18 +463,26 @@ export async function getMarcasMes(
   for (let d = 1; d <= diasEnMes; d++) {
     const key = `${year}-${pad2(month + 1)}-${pad2(d)}`;
     const weekday = new Date(year, month, d).getDay();
-    const marca: MarcaDia = { diaria: false, semanal: false, general: false };
+    const marca: MarcaDia = { diaria: false, semanal: false, puntual: false, general: false };
 
     for (const t of tareas) {
       if (t.tipo === 'general') {
-        if (t.fecha === key && !t.completada) marca.general = true;
-      } else if (t.diasSemana.includes(weekday)) {
-        if (t.tipo === 'diaria') marca.diaria = true;
-        else marca.semanal = true;
+        if (t.completada && t.completadaEn != null && localDayKey(t.completadaEn) === key) {
+          marca.general = true;
+        }
+      } else if (t.tipo === 'puntual') {
+        if (t.fecha === key) marca.puntual = true;
+      } else if (localDayKey(t.creadaEn) <= key) {
+        // Diarias a partir de su creación; semanales en sus días marcados.
+        if (t.tipo === 'diaria') {
+          marca.diaria = true;
+        } else if (diasRecurrencia(t).includes(weekday)) {
+          marca.semanal = true;
+        }
       }
     }
 
-    if (marca.diaria || marca.semanal || marca.general) {
+    if (marca.diaria || marca.semanal || marca.puntual || marca.general) {
       marcas[key] = marca;
     }
   }
@@ -484,8 +518,8 @@ export async function getEstadisticas(db: SQLiteDatabase): Promise<Estadisticas>
 
   return {
     total: tareas.length,
-    pendientes: tareas.filter((t) => (t.tipo === 'general' ? !t.completada : true)).length,
-    completadasDeUnaVez: tareas.filter((t) => t.tipo === 'general' && t.completada).length,
+    pendientes: tareas.filter((t) => (esDeUnaSolaVez(t) ? !t.completada : true)).length,
+    completadasDeUnaVez: tareas.filter((t) => esDeUnaSolaVez(t) && t.completada).length,
     diarias: tareas.filter((t) => t.tipo === 'diaria').length,
     semanales: tareas.filter((t) => t.tipo === 'semanal').length,
     generales: tareas.filter((t) => t.tipo === 'general').length,
@@ -493,6 +527,92 @@ export async function getEstadisticas(db: SQLiteDatabase): Promise<Estadisticas>
     hoyTotal: dia.pendientes.length + dia.hechas.length,
     racha,
   };
+}
+
+// -------------------------------------------------- Resumen de estadísticas
+
+export interface RachaDia {
+  fecha: string;
+  titulos: { titulo: string; tipo: TaskType }[];
+}
+
+/** Días de la racha actual con las metas completadas en cada uno. */
+export async function getRachaDetalle(
+  db: SQLiteDatabase
+): Promise<{ racha: number; dias: RachaDia[] }> {
+  const tareas = await getTareas(db);
+  const porId = new Map(tareas.map((t) => [t.id, t]));
+  const logros = await db.getAllAsync<{ tarea_id: number; fecha: string }>(
+    'SELECT tarea_id, fecha FROM logros'
+  );
+
+  const actividadPorFecha = new Map<string, Set<number>>();
+  const addActividad = (fecha: string, tareaId: number) => {
+    if (!fecha) return;
+    const set = actividadPorFecha.get(fecha) ?? new Set();
+    set.add(tareaId);
+    actividadPorFecha.set(fecha, set);
+  };
+
+  // Recurrentes: el día de su logro. Una sola vez: el día efectivo (completadaEn).
+  for (const l of logros) {
+    const t = porId.get(l.tarea_id);
+    if (t && !esDeUnaSolaVez(t)) addActividad(l.fecha, l.tarea_id);
+  }
+  for (const t of tareas) {
+    if (esDeUnaSolaVez(t) && t.completada && t.completadaEn) {
+      addActividad(localDayKey(t.completadaEn), t.id);
+    }
+  }
+
+  const hoy = todayKey();
+  let cursor = actividadPorFecha.has(hoy) ? hoy : addDaysToKey(hoy, -1);
+  const dias: RachaDia[] = [];
+  while (actividadPorFecha.has(cursor)) {
+    const ids = Array.from(actividadPorFecha.get(cursor)!);
+    dias.push({
+      fecha: cursor,
+      titulos: ids
+        .map((tid) => porId.get(tid))
+        .filter((t): t is Tarea => !!t)
+        .map((t) => ({ titulo: t.titulo, tipo: t.tipo })),
+    });
+    cursor = addDaysToKey(cursor, -1);
+  }
+  return { racha: dias.length, dias };
+}
+
+export interface EstadisticaResumen {
+  stats: Estadisticas;
+  activas?: Tarea[];
+  racha?: { dias: RachaDia[] };
+  hechasHoy?: TareaDelDia[];
+  cumplidas?: { tarea: Tarea; completadaEl: string }[];
+}
+
+/** Todo lo que necesita una pantalla de resumen según la estadística elegida. */
+export async function getEstadisticaResumen(
+  db: SQLiteDatabase,
+  clave: string
+): Promise<EstadisticaResumen> {
+  const stats = await getEstadisticas(db);
+  if (clave === 'racha') {
+    return { stats, racha: await getRachaDetalle(db) };
+  }
+  if (clave === 'hoy') {
+    const dia = await getDia(db, todayKey());
+    return { stats, hechasHoy: dia.hechas };
+  }
+  if (clave === 'generales') {
+    const cumplidas = (await getTareas(db))
+      .filter((t) => esDeUnaSolaVez(t) && t.completada && t.completadaEn != null)
+      .map((t) => ({ tarea: t, completadaEl: localDayKey(t.completadaEn!) }));
+    return { stats, cumplidas };
+  }
+  const activas = (await getTareas(db)).filter((t) =>
+    esDeUnaSolaVez(t) ? !t.completada : true
+  );
+  return { stats, activas };
 }
 
 // ------------------------------------------------------------------- Ajustes

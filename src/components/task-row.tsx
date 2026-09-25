@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
 import type { Tarea } from '@/lib/schema';
+import { priorityColor, SEMANTIC } from '@/constants/theme';
 
 interface TaskRowProps {
   tarea: Tarea;
@@ -17,6 +18,7 @@ interface TaskRowProps {
 const TIPO_LABELS: Record<Tarea['tipo'], string> = {
   diaria: 'Diaria',
   semanal: 'Semanal',
+  puntual: 'Día específico',
   general: 'General',
 };
 
@@ -31,6 +33,9 @@ export function TaskRow({
 }: TaskRowProps) {
   const theme = useTheme();
 
+  // La X roja solo aparece si su fecha pasó sin hacerse (categoría "No hechas").
+  const vencida = atrasada;
+
   return (
     <View
       style={[
@@ -38,12 +43,18 @@ export function TaskRow({
         { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant },
       ]}
     >
-      <View style={[styles.strip, { backgroundColor: tarea.color }]} />
+      <View style={[styles.strip, { backgroundColor: priorityColor(tarea.prioridad) }]} />
       <Pressable onPress={onToggle} hitSlop={8} style={styles.check}>
         <MaterialCommunityIcons
-          name={hecha ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+          name={
+            hecha
+              ? 'checkbox-marked-circle'
+              : vencida
+                ? 'close-circle-outline'
+                : 'checkbox-blank-circle-outline'
+          }
           size={26}
-          color={hecha ? theme.colors.primary : theme.colors.onSurfaceVariant}
+          color={hecha ? SEMANTIC.success : vencida ? theme.colors.error : theme.colors.onSurfaceVariant}
         />
       </Pressable>
       <Pressable onPress={onPress} style={styles.main}>
@@ -73,7 +84,9 @@ export function TaskRow({
                   ? 'repeat-variant'
                   : tarea.tipo === 'semanal'
                     ? 'calendar-week'
-                    : 'target'
+                    : tarea.tipo === 'puntual'
+                      ? 'calendar-star'
+                      : 'target'
               }
               size={13}
               color={theme.colors.primary}
@@ -87,9 +100,9 @@ export function TaskRow({
               {subhechas}/{subtotal} {subtotal === 1 ? 'subtarea' : 'subtareas'}
             </Text>
           ) : null}
-          {atrasada ? (
+          {vencida ? (
             <Text variant="labelSmall" style={{ color: theme.colors.error, fontWeight: '700' }}>
-              Atrasada
+              No hecha
             </Text>
           ) : null}
         </View>

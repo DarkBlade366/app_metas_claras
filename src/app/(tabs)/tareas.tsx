@@ -2,7 +2,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Chip, FAB, SegmentedButtons, Text, useTheme } from 'react-native-paper';
+import { Badge, FAB, SegmentedButtons, Text, useTheme } from 'react-native-paper';
 
 import { Screen } from '@/components/screen';
 import { TaskRow } from '@/components/task-row';
@@ -13,7 +13,7 @@ import type { TaskType } from '@/lib/schema';
 
 type Filtro = 'todas' | TaskType;
 
-const GRUPO_ORDEN: Record<TaskType, number> = { diaria: 0, semanal: 1, general: 2 };
+const GRUPO_ORDEN: Record<TaskType, number> = { diaria: 0, semanal: 1, puntual: 2, general: 3 };
 
 export default function TareasScreen() {
   const theme = useTheme();
@@ -69,6 +69,7 @@ export default function TareasScreen() {
             { value: 'todas', label: 'Todas' },
             { value: 'diaria', label: 'Diarias', icon: 'repeat-variant' },
             { value: 'semanal', label: 'Semanales', icon: 'calendar-week' },
+            { value: 'puntual', label: 'Día', icon: 'calendar-star' },
             { value: 'general', label: 'Generales', icon: 'target' },
           ]}
           style={styles.segmented}
@@ -88,7 +89,13 @@ export default function TareasScreen() {
         {groups.map((g) => (
           <View key={g.tipo} style={styles.section}>
             <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: '700' }}>
-              {g.tipo === 'diaria' ? 'Diarias' : g.tipo === 'semanal' ? 'Semanales' : 'Generales'}
+              {g.tipo === 'diaria'
+                ? 'Diarias'
+                : g.tipo === 'semanal'
+                  ? 'Semanales'
+                  : g.tipo === 'puntual'
+                    ? 'Día específico'
+                    : 'Generales'}
             </Text>
             <View style={{ gap: 8 }}>
               {g.lista.map((it) => (
@@ -112,9 +119,7 @@ export default function TareasScreen() {
               <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant, fontWeight: '700' }}>
                 Completadas
               </Text>
-              <Chip style={styles.doneChip} compact>
-                {hechas.length}
-              </Chip>
+              <Badge style={styles.doneBadge}>{hechas.length}</Badge>
             </View>
             <View style={{ gap: 8 }}>
               {hechas.map((it) => (
@@ -146,7 +151,7 @@ const styles = StyleSheet.create({
   segmented: { marginBottom: 16 },
   section: { gap: 8, marginBottom: 16 },
   doneHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  doneChip: { height: 24 },
+  doneBadge: { alignSelf: 'center' },
   emptyHint: { alignItems: 'center', gap: 10, paddingVertical: 40, paddingHorizontal: 24 },
   fab: { position: 'absolute', right: 16, bottom: 16 },
 });
