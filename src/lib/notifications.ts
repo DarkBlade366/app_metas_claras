@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { getRecordatorioConfig, getTareas } from './db';
+import { getIssuesActivos, getIssuesRecordatorioConfig } from './proyectos';
 import { TODOS_LOS_DIAS } from './schema';
 
 type NotificationsModule = typeof import('expo-notifications');
@@ -206,6 +207,37 @@ export async function syncNotificaciones(db: SQLiteDatabase): Promise<void> {
         },
       })
     );
+  }
+
+  // Issues por resolver (pestaña Proyectos): a cada hora elegida por el
+  // usuario suena si quedan issues sin resolver en algún proyecto. Como un
+  // DAILY no puede depender del estado de la BD en el momento de sonar, solo
+  // se programa mientras existan issues abiertos; al resolver el último, el
+  // próximo sync cancela las alertas.
+  const issuesCfg = await getIssuesRecordatorioConfig(db);
+  if (issuesCfg.activo && issuesCfg.horas.length > 0) {
+    const issues = await getIssuesActivos(db);
+    const abiertos = issues.filter((i) => i.estado === 'abierto').length;
+    if (abiertos > 0) {
+      for (const hora of issuesCfg.horas) {
+        const { hour, minute } = parseHora(hora);
+        pendientes.push(
+          mod.scheduleNotificationAsync({
+            content: {
+              title: TITULO_APP,
+              body: `Quedan ${abiertos} ${abiertos === 1 ? 'issue' : 'issues'} por resolver`,
+              sound: 'default',
+            },
+            trigger: {
+              type: mod.SchedulableTriggerInputTypes.DAILY,
+              hour,
+              minute,
+              channelId: CHANNEL_ID,
+            },
+          })
+        );
+      }
+    }
   }
 
   await Promise.allSettled(pendientes);

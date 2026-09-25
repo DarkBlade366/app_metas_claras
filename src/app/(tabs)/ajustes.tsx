@@ -2,7 +2,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, Card, Divider, Switch, Text, useTheme } from 'react-native-paper';
+import { Button, Card, Chip, Switch, Text, useTheme } from 'react-native-paper';
 
 import { AppLogo } from '@/components/app-logo';
 import { ConfirmDialog } from '@/components/confirm-dialog';
@@ -13,6 +13,8 @@ import { getEstadisticas, getRecordatorioConfig, pad2, RECORDATORIO_DEFAULT_HORA
 import type { RecordatorioConfig } from '@/lib/db';
 import { dataChanged, useDB, useDbQuery } from '@/lib/db-provider';
 import { enviarPrueba, notificacionesActivadas, pedirPermisoNotificaciones } from '@/lib/notifications';
+import { getIssuesRecordatorioConfig, setIssuesRecordatorioConfig } from '@/lib/proyectos';
+import type { IssuesRecordatorioConfig } from '@/lib/proyectos';
 
 function horaToDate(hora: string): Date {
   const [h, m] = hora.split(':').map(Number);
@@ -31,6 +33,7 @@ export default function AjustesScreen() {
 
   const stats = useDbQuery(() => getEstadisticas(db));
   const [rcfg, setRcfg] = useState<RecordatorioConfig | null>(null);
+  const [ircfg, setIrcfg] = useState<IssuesRecordatorioConfig | null>(null);
   const [permitido, setPermitido] = useState<boolean | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -38,8 +41,10 @@ export default function AjustesScreen() {
     let vivo = true;
     (async () => {
       const cfg = await getRecordatorioConfig(db);
+      const icfg = await getIssuesRecordatorioConfig(db);
       if (!vivo) return;
       setRcfg(cfg);
+      setIrcfg(icfg);
       setPermitido(await notificacionesActivadas());
     })().catch(() => {});
     return () => {
@@ -93,8 +98,40 @@ export default function AjustesScreen() {
     }
   };
 
+  const cambiarActivoIssues = async (activo: boolean) => {
+    if (!ircfg) return;
+    if (activo && permitido === false) {
+      const ok = await pedirPermisoNotificaciones();
+      setPermitido(ok);
+      if (!ok) return;
+    }
+    const next = { ...ircfg, activo };
+    setIrcfg(next);
+    await setIssuesRecordatorioConfig(db, next);
+    dataChanged();
+  };
+
+  const anadirHora = async (d: Date) => {
+    if (!ircfg) return;
+    const hora = dateToHora(d);
+    if (ircfg.horas.includes(hora)) return;
+    const next = { ...ircfg, horas: [...ircfg.horas, hora] };
+    setIrcfg(next);
+    await setIssuesRecordatorioConfig(db, next);
+    dataChanged();
+  };
+
+  const quitarHora = async (hora: string) => {
+    if (!ircfg) return;
+    const next = { ...ircfg, horas: ircfg.horas.filter((h) => h !== hora) };
+    setIrcfg(next);
+    await setIssuesRecordatorioConfig(db, next);
+    dataChanged();
+  };
+
   const s = stats.data;
   const horaDate = rcfg ? horaToDate(rcfg.hora) : horaToDate(RECORDATORIO_DEFAULT_HORA);
+  const horaNueva = new Date(2000, 0, 1, 9, 0);
 
   return (
     <>
@@ -147,25 +184,6 @@ export default function AjustesScreen() {
             onPress={() => router.push('/estadistica/generales')}
           />
         </View>
-
-        <Card mode="outlined" style={styles.card}>
-          <Card.Title
-            title="Cómo funcionan las metas"
-            titleVariant="titleSmall"
-            left={(props) => (
-              <MaterialCommunityIcons {...props} name="information-outline" size={24} color={theme.colors.primary} />
-            )}
-          />
-          <Card.Content>
-            <InfoLine text="Diarias y semanales se repiten: las diarias cada día y las semanales los días que escojas." />
-            <Divider style={styles.divider} />
-            <InfoLine text="De día específico se hacen una vez (solo ese día en el calendario); si no se hacen salen con X roja." />
-            <Divider style={styles.divider} />
-            <InfoLine text="Las generales solo aparecen el día en que las completas; pueden llevar subtareas y fecha límite opcional." />
-            <Divider style={styles.divider} />
-            <InfoLine text="La racha suma cada día en que completas al menos una meta." />
-          </Card.Content>
-        </Card>
 
         <Card mode="outlined" style={styles.card}>
           <Card.Title
@@ -228,6 +246,67 @@ export default function AjustesScreen() {
           </Card.Content>
         </Card>
 
+        <Card mode="outlined" style={styles.card}>
+          <Card.Title
+            title="Issues por resolver"
+            titleVariant="titleSmall"
+            subtitle="Recordatorios de la pestaña Proyectos"
+            left={(props) => (
+              <MaterialCommunityIcons {...props} name="briefcase-check-outline" size={24} color={theme.colors.primary} />
+            )}
+          />
+          <Card.Content>
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1 }}>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                  Avisar si quedan issues sin resolver
+                </Text>
+                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Suena a las horas que elijas si te queda algo por resolver en algún proyecto
+                </Text>
+              </View>
+              <Switch
+                value={ircfg?.activo ?? false}
+                onValueChange={cambiarActivoIssues}
+                color={theme.colors.primary}
+              />
+            </View>
+
+            {ircfg?.activo ? (
+              <>
+                <Text variant="labelMedium" style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Horas en que quieres que avise
+                </Text>
+                {ircfg.horas.length > 0 ? (
+                  <View style={styles.chipsWrap}>
+                    {ircfg.horas.map((h) => (
+                      <Chip key={h} onClose={() => quitarHora(h)} style={styles.chip}>
+                        {h}
+                      </Chip>
+                    ))}
+                  </View>
+                ) : (
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                    Todavía no tienes horas. Añade las que quieras, por ejemplo 7:00, 10:00, 12:00, 16:00, 19:00 y 22:00.
+                  </Text>
+                )}
+                <View style={{ marginTop: 8 }}>
+                  <PickField
+                    label="Añadir hora de aviso"
+                    icon="clock-plus-outline"
+                    value={horaNueva}
+                    mode="time"
+                    onChange={anadirHora}
+                  />
+                </View>
+                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
+                  En cada hora elegida sonará una alerta solo si en ese momento hay issues abiertos.
+                </Text>
+              </>
+            ) : null}
+          </Card.Content>
+        </Card>
+
         <Button
           mode="outlined"
           icon={({ color }) => <MaterialCommunityIcons name="trash-can-outline" size={18} color={color} />}
@@ -258,22 +337,15 @@ export default function AjustesScreen() {
   );
 }
 
-function InfoLine({ text }: { text: string }) {
-  const theme = useTheme();
-  return (
-    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, lineHeight: 20 }}>
-      {text}
-    </Text>
-  );
-}
-
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   headerTitle: { flex: 1 },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   card: { borderRadius: 16, marginBottom: 16 },
-  divider: { marginVertical: 10 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  fieldLabel: { marginTop: 16, marginBottom: 8 },
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { height: 32 },
   testBtn: { marginTop: 16, borderRadius: 10 },
   dangerBtn: { borderRadius: 10, borderColor: 'rgba(248,113,113,0.4)' },
 });
