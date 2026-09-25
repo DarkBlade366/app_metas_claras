@@ -7,6 +7,7 @@ const OUTLINE_ICONS: Record<string, string> = {
   'calendar-check': 'calendar-check-outline',
   'format-list-checks': 'format-list-checks',
   'calendar-month': 'calendar-month-outline',
+  briefcase: 'briefcase-outline',
   cog: 'cog-outline',
 };
 
@@ -54,6 +55,13 @@ export default function TabLayout() {
         options={{
           title: 'Calendario',
           tabBarIcon: tabIcon('calendar-month'),
+        }}
+      />
+      <Tabs.Screen
+        name="proyectos"
+        options={{
+          title: 'Proyectos',
+          tabBarIcon: tabIcon('briefcase'),
         }}
       />
       <Tabs.Screen

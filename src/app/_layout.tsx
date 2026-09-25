@@ -56,6 +56,12 @@ export default function RootLayout() {
               <Stack.Screen name="tarea/nueva" options={{ title: 'Nueva meta' }} />
               <Stack.Screen name="tarea/[id]" options={{ title: 'Meta' }} />
               <Stack.Screen name="estadistica/[clave]" options={{ title: 'Estadística' }} />
+              <Stack.Screen name="proyecto/nueva" options={{ title: 'Nuevo proyecto' }} />
+              <Stack.Screen name="proyecto/[id]" options={{ title: 'Proyecto' }} />
+              <Stack.Screen name="proyectos/estadistica" options={{ title: 'Métricas' }} />
+              <Stack.Screen name="proyectos/estadistica/[clave]" options={{ title: 'Detalle' }} />
+              <Stack.Screen name="issue/nueva" options={{ title: 'Nuevo issue' }} />
+              <Stack.Screen name="issue/[id]" options={{ title: 'Issue' }} />
             </Stack>
           </PaperProvider>
         </DBProvider>
