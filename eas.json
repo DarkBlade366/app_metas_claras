@@ -1,7 +1,6 @@
 {
   "cli": {
-    "version": ">= 23.2.0",
-    "appVersionSource": "remote"
+    "version": ">= 23.2.0"
   },
   "build": {
     "development": {
@@ -15,7 +14,6 @@
       }
     },
     "production": {
-      "autoIncrement": true,
       "android": {
         "image": "latest"
       }
