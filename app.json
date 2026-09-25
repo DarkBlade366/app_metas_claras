@@ -11,6 +11,7 @@
       "icon": "./assets/images/icon.png"
     },
     "android": {
+      "package": "com.nexa366.metasclaras",
       "adaptiveIcon": {
         "backgroundColor": "#141318",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
